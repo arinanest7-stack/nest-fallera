@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: fallera_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fallera}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nestpass}
+      POSTGRES_DB: ${POSTGRES_DB:-falleranest}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fallera_backend
+    restart: always
+    ports:
+      - "${PORT:-5050}:5000"
+    environment:
+      PORT: 5000
+      DATABASE_URL: ${DATABASE_URL:-postgresql://fallera:nestpass@db:5432/falleranest}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fallera_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:5050}
+    depends_on:
+      - backend
+
+  welcome:
+    image: alpine:latest
+    container_name: fallera_welcome
+    depends_on:
+      - frontend
+    entrypoint: >
+      sh -c "
+      sleep 8 &&
+      echo '' &&
+      echo '========================================================' &&
+      echo '🎉 ¡Fallera Nest está listo para usar!' &&
+      echo '👉 Accede a la aplicación en: http://localhost:3000' &&
+      echo '========================================================' &&
+      echo '' &&
+      sleep 999999
+      "
+
+volumes:
+  pgdata:
