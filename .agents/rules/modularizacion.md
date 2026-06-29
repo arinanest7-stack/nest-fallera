@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: Reglas y directrices de modularización, separación de responsabilidades y escalabilidad para evitar archivos monolíticos.
+---
+
 # Modularización y Escalabilidad
 
 Al crear nuevas funcionalidades, realizar refactorizaciones o modificar código existente, se deberá mantener una estructura modular, escalable y fácil de mantener.
