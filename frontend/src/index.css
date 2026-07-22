@@ -227,23 +227,6 @@
     mix-blend-mode: normal;
     filter: contrast(1.03) saturate(1.05);
   }
-
-  /* Top whitish-beige gradient overlay across all pages to ensure title contrast & readability */
-  .bg-design-overlay::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 340px;
-    background: linear-gradient(
-      to bottom,
-      oklch(0.972 0.015 85 / 0.96) 0%,
-      oklch(0.972 0.015 85 / 0.85) 55%,
-      transparent 100%
-    );
-    pointer-events: none;
-  }
 }
 
 @utility gold-rule {
