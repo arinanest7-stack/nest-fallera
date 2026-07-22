@@ -124,28 +124,19 @@ export function CalendarView({ refreshTrigger }: CalendarViewProps) {
   return (
     <div className="relative w-full">
       <div className="relative mx-auto max-w-7xl px-8 py-6">
-        <header className="rounded-2xl border border-[color:var(--color-border)] border-l-4 border-l-[color:var(--color-primary)] bg-[color:var(--color-surface-elevated)]/95 p-6 shadow-md backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="eyebrow font-semibold text-[color:var(--color-primary)] opacity-90">Atelier · Agenda</div>
-            <div className="flex items-center gap-4 mt-1">
-              <img src="/design/crowns.png" alt="Corona Emblem" className="h-12 w-auto object-contain drop-shadow-md" />
-              <h1 className="font-display text-5xl text-[color:var(--color-primary)] font-bold tracking-tight">
-                Calendario de Citas
-              </h1>
-            </div>
-            <p className="mt-2 max-w-2xl text-sm text-[color:var(--color-foreground)] font-medium">
-              Visualiza y organiza las citas de pruebas de trajes de las clientas.
-            </p>
+        {/* Header */}
+        <header className="inline-flex max-w-2xl flex-col rounded-xl border border-[color:var(--color-border)] border-l-4 border-l-[color:var(--color-primary)] bg-[color:var(--color-surface-elevated)]/95 px-6 py-4 shadow-md backdrop-blur-md">
+          <div className="eyebrow font-semibold text-[color:var(--color-primary)] opacity-90">Atelier · Agenda</div>
+          <div className="flex items-center gap-3.5 mt-1">
+            <img src="/design/crowns.png" alt="Corona Emblem" className="h-10 w-auto object-contain drop-shadow-md" />
+            <h1 className="font-display text-4xl text-[color:var(--color-primary)] font-bold tracking-tight">
+              Calendario de Citas
+            </h1>
           </div>
-          <div className="hidden md:flex items-center gap-3 bg-[color-mix(in_oklab,var(--color-surface)_90%,transparent)] p-3 rounded-xl border border-[color:var(--color-border)] shadow-xs">
-            <img src="/design/green-element.png" alt="Detalle" className="h-10 w-10 rounded-md object-cover shadow-inner" />
-            <div className="text-xs">
-              <span className="font-semibold block text-[color:var(--color-primary)]">Gestión de Citas</span>
-              <span className="text-muted-foreground font-medium">Agenda de Pruebas</span>
-            </div>
-          </div>
+          <p className="mt-1.5 text-sm text-[color:var(--color-foreground)] font-medium leading-relaxed">
+            Visualiza y organiza las citas de pruebas de trajes de las clientas.
+          </p>
         </header>
-        <div className="gold-rule mt-6 max-w-md" />
 
         <section className="mt-10 overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-elevated)] shadow-md">
           {/* Toolbar */}
