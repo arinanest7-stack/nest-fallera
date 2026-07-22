@@ -146,17 +146,103 @@
   }
 
   .app-container {
+    position: relative;
     display: flex;
     min-height: 100vh;
     width: 100%;
-    background-color: var(--color-background);
+    background-color: transparent;
   }
 
   .main-content {
+    position: relative;
     flex: 1;
     height: 100vh;
     overflow-y: auto;
+    background-color: transparent;
+    z-index: 1;
+  }
+
+  /* Full Page Connected Background Base */
+  .bg-design-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
     background-color: var(--color-background);
+  }
+
+  .bg-design-overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url('/design/crowns.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.12;
+    mix-blend-mode: multiply;
+  }
+
+  /* Clientes y Trajes View: Atelier Dressing Room Background */
+  .bg-view-clients::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url('/design/clients-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.75;
+    mix-blend-mode: normal;
+    filter: contrast(1.03) saturate(1.05);
+  }
+
+  /* Calendar View: Castle Balcony Background */
+  .bg-view-calendar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url('/design/castle-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.75;
+    mix-blend-mode: normal;
+    filter: contrast(1.03) saturate(1.05);
+  }
+
+  /* Dashboard View: Waterfall Palace Mansion Background */
+  .bg-view-dashboard::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url('/design/dashboard-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.75;
+    mix-blend-mode: normal;
+    filter: contrast(1.03) saturate(1.05);
+  }
+
+  /* Top whitish-beige gradient overlay across all pages to ensure title contrast & readability */
+  .bg-design-overlay::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 340px;
+    background: linear-gradient(
+      to bottom,
+      oklch(0.972 0.015 85 / 0.96) 0%,
+      oklch(0.972 0.015 85 / 0.85) 55%,
+      transparent 100%
+    );
+    pointer-events: none;
   }
 }
 
@@ -170,3 +256,20 @@
     transparent
   );
 }
+
+.card-textured {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-textured::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url('/design/bg-1.png');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.04;
+  pointer-events: none;
+}
+

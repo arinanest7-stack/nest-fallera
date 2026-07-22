@@ -91,23 +91,35 @@ export function DashboardView({ refreshTrigger }: DashboardViewProps) {
   return (
     <div className="relative w-full">
       <div className="relative mx-auto max-w-7xl px-8 py-6">
-        <header>
-          <div className="eyebrow">Atelier · Resumen</div>
-          <h1 className="mt-2 font-display text-5xl text-[color:var(--color-primary)]">
-            Dashboard
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Un vistazo al estado del taller: encargos, pagos y próximas pruebas.
-          </p>
-          <div className="gold-rule mt-6 max-w-md" />
+        <header className="rounded-2xl border border-[color:var(--color-border)] border-l-4 border-l-[color:var(--color-primary)] bg-[color:var(--color-surface-elevated)]/95 p-6 shadow-md backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="eyebrow font-semibold text-[color:var(--color-primary)] opacity-90">Atelier · Resumen</div>
+            <div className="flex items-center gap-4 mt-1">
+              <img src="/design/crowns.png" alt="Corona Crest" className="h-12 w-auto object-contain drop-shadow-md" />
+              <h1 className="font-display text-5xl text-[color:var(--color-primary)] font-bold tracking-tight">
+                Dashboard
+              </h1>
+            </div>
+            <p className="mt-2 max-w-2xl text-sm text-[color:var(--color-foreground)] font-medium">
+              Un vistazo al estado del taller: encargos, pagos y próximas pruebas.
+            </p>
+          </div>
+          <div className="hidden md:flex items-center gap-3 bg-[color-mix(in_oklab,var(--color-surface)_90%,transparent)] p-3 rounded-xl border border-[color:var(--color-border)] shadow-xs">
+            <img src="/design/green-element.png" alt="Detalle" className="h-10 w-10 rounded-md object-cover shadow-inner" />
+            <div className="text-xs">
+              <span className="font-semibold block text-[color:var(--color-primary)]">Colección Activa</span>
+              <span className="text-muted-foreground font-medium">Indumentaria Valenciana 2026</span>
+            </div>
+          </div>
         </header>
+        <div className="gold-rule mt-6 max-w-md" />
 
         {/* Tarjetas de Métricas */}
         <section className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((s) => (
             <div
               key={s.label}
-              className="relative overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-surface-elevated p-6 shadow-sm"
+              className="relative overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-elevated)] p-6 shadow-md"
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -116,8 +128,8 @@ export function DashboardView({ refreshTrigger }: DashboardViewProps) {
                     {s.value}
                   </div>
                 </div>
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--color-gold)_18%,transparent)] text-[color:var(--color-primary-deep)]">
-                  <s.Icon className="h-4 w-4" strokeWidth={1.6} />
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--color-gold)_18%,transparent)] text-[color:var(--color-primary-deep)] shadow-xs">
+                  <s.Icon className="h-5 w-5" strokeWidth={1.6} />
                 </span>
               </div>
               <div className="gold-rule mt-4" />
@@ -128,7 +140,7 @@ export function DashboardView({ refreshTrigger }: DashboardViewProps) {
         {/* Secciones Dashboard */}
         <section className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Próximas Citas */}
-          <div className="rounded-xl border border-[color:var(--color-border)] bg-surface-elevated lg:col-span-2 shadow-sm">
+          <div className="rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-elevated)] lg:col-span-2 shadow-md">
             <div className="border-b border-[color:var(--color-border)] px-6 py-4">
               <h2 className="font-display text-2xl text-foreground font-semibold">Próximas citas</h2>
             </div>
@@ -171,7 +183,7 @@ export function DashboardView({ refreshTrigger }: DashboardViewProps) {
           </div>
 
           {/* Top Deudores */}
-          <div className="rounded-xl border border-[color:var(--color-border)] bg-surface-elevated shadow-sm">
+          <div className="rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-elevated)] shadow-md">
             <div className="border-b border-[color:var(--color-border)] px-6 py-4">
               <h2 className="font-display text-2xl text-foreground font-semibold">Saldos pendientes</h2>
             </div>
@@ -198,7 +210,7 @@ export function DashboardView({ refreshTrigger }: DashboardViewProps) {
         </section>
 
         {/* Gráfico Trajes Más Solicitados */}
-        <section className="mt-10 rounded-xl border border-[color:var(--color-border)] bg-surface-elevated p-8 shadow-sm">
+        <section className="mt-10 rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-elevated)] p-8 shadow-md">
           <h2 className="font-display text-2xl text-foreground font-semibold mb-6">
             Trajes y Corpiños Más Solicitados
           </h2>

@@ -222,20 +222,32 @@ export function ClientManager({ onRefreshCitas }: ClientManagerProps) {
     <div className="relative w-full">
       <div className="relative mx-auto max-w-7xl px-8 py-6">
         {/* Header */}
-        <header>
-          <div className="eyebrow">Atelier · Gestión</div>
-          <h1 className="mt-2 font-display text-5xl text-[color:var(--color-primary)]">
-            Gestión de Clientas
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Registra clientas, selecciona sus trajes y agenda sus citas de prueba en tu taller.
-          </p>
-          <div className="gold-rule mt-6 max-w-md" />
+        <header className="rounded-2xl border border-[color:var(--color-border)] border-l-4 border-l-[color:var(--color-primary)] bg-[color:var(--color-surface-elevated)]/95 p-6 shadow-md backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="eyebrow font-semibold text-[color:var(--color-primary)] opacity-90">Atelier · Gestión</div>
+            <div className="flex items-center gap-4 mt-1">
+              <img src="/design/crowns.png" alt="Corona Crest" className="h-12 w-auto object-contain drop-shadow-md" />
+              <h1 className="font-display text-5xl text-[color:var(--color-primary)] font-bold tracking-tight">
+                Gestión de Clientas
+              </h1>
+            </div>
+            <p className="mt-2 max-w-2xl text-sm text-[color:var(--color-foreground)] font-medium">
+              Registra clientas, selecciona sus trajes y agenda sus citas de prueba en tu taller.
+            </p>
+          </div>
+          <div className="hidden md:flex items-center gap-3 bg-[color-mix(in_oklab,var(--color-surface)_90%,transparent)] p-3 rounded-xl border border-[color:var(--color-border)] shadow-xs">
+            <img src="/design/green-element.png" alt="Detalle Verde" className="h-10 w-10 rounded-md object-cover shadow-inner" />
+            <div className="text-xs">
+              <span className="font-semibold block text-[color:var(--color-primary)]">Taller Tradicional</span>
+              <span className="text-muted-foreground font-medium">Confección & Pruebas</span>
+            </div>
+          </div>
         </header>
+        <div className="gold-rule mt-6 max-w-md" />
 
         {/* Card Nuevo Encargo */}
-        <form onSubmit={handleCreateCliente} className="mt-10 rounded-xl border border-[color:var(--color-border)] bg-surface-elevated shadow-[0_1px_0_rgba(255,255,255,0.6),0_10px_30px_-20px_rgba(110,44,41,0.35)]">
-          <div className="flex items-center gap-3 border-b border-[color:var(--color-border)] px-8 py-5">
+        <form onSubmit={handleCreateCliente} className="mt-10 rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-elevated)] shadow-md">
+          <div className="flex items-center gap-3 border-b border-[color:var(--color-border)] bg-[color:var(--color-surface-elevated)] px-8 py-5">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--color-primary)_10%,transparent)] text-[color:var(--color-primary)]">
               <Scissors className="h-4 w-4" strokeWidth={1.6} />
             </span>
@@ -330,8 +342,8 @@ export function ClientManager({ onRefreshCitas }: ClientManagerProps) {
         </form>
 
         {/* Tabla Clientas */}
-        <section className="mt-10 overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-surface-elevated shadow-sm">
-          <div className="border-b border-[color:var(--color-border)] px-8 py-5">
+        <section className="mt-10 overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-elevated)] shadow-md">
+          <div className="border-b border-[color:var(--color-border)] bg-[color:var(--color-surface-elevated)] px-8 py-5">
             <div className="flex items-baseline justify-between">
               <h2 className="font-display text-2xl text-foreground font-semibold">Clientas activas</h2>
               <span className="eyebrow">{clientes.length} registros</span>

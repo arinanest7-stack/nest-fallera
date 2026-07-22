@@ -1,6 +1,6 @@
 import React from 'react';
 import { Users, CalendarDays, LayoutDashboard } from 'lucide-react';
-import { BrocadePattern, BrocadeMark } from './ornaments/BrocadePattern';
+import { BrocadePattern } from './ornaments/BrocadePattern';
 
 interface SidebarProps {
   activeView: string;
@@ -15,7 +15,7 @@ const items = [
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
   return (
-    <aside className="relative flex w-64 shrink-0 flex-col border-r border-[color:var(--color-sidebar-border)] bg-sidebar text-sidebar-foreground">
+    <aside className="relative flex w-64 shrink-0 flex-col border-r border-[color:var(--color-sidebar-border)] bg-[color-mix(in_oklab,var(--color-sidebar)_85%,transparent)] backdrop-blur-md text-sidebar-foreground z-10">
       <BrocadePattern
         className="pointer-events-none absolute inset-0 h-full w-full text-[color:var(--color-primary)]"
         opacity={0.05}
@@ -23,7 +23,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) =
 
       <div className="relative px-6 pt-8 pb-6">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveView('clients')}>
-          <BrocadeMark className="h-7 w-7 text-[color:var(--color-primary)]" />
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_oklab,var(--color-gold)_15%,transparent)] border border-[color-mix(in_oklab,var(--color-gold)_40%,transparent)] shadow-sm">
+            <img src="/design/crowns.png" alt="Corona" className="h-8 w-8 object-contain drop-shadow-md" />
+          </div>
           <div className="flex flex-col leading-none">
             <span className="font-display text-2xl text-[color:var(--color-primary)] font-bold">
               Fallera Nest
@@ -62,13 +64,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) =
         </ul>
       </nav>
 
-      <div className="relative px-5 py-6 border-t border-[color:var(--color-sidebar-border)]">
-        <div className="eyebrow">Taller</div>
-        <div className="mt-1 font-display text-lg text-[color:var(--color-foreground)] font-medium">
-          Julio · 2026
-        </div>
-        <div className="mt-1 text-xs text-muted-foreground">
-          Gestión de Indumentaria
+      <div className="relative px-5 py-5 border-t border-[color:var(--color-sidebar-border)] bg-[color-mix(in_oklab,var(--color-sidebar-accent)_40%,transparent)] rounded-t-xl mx-2 mb-2 overflow-hidden">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 shrink-0 rounded-md overflow-hidden bg-emerald-950/20 border border-emerald-600/30 flex items-center justify-center p-0.5">
+            <img src="/design/green-element.png" alt="Ornamento" className="h-full w-full object-cover rounded-sm" />
+          </div>
+          <div>
+            <div className="eyebrow">Taller</div>
+            <div className="font-display text-base text-[color:var(--color-foreground)] font-semibold leading-tight">
+              Julio · 2026
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              Gestión de Indumentaria
+            </div>
+          </div>
         </div>
       </div>
     </aside>

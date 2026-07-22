@@ -14,6 +14,7 @@ function App() {
 
   return (
     <div className="app-container">
+      <div className={`bg-design-overlay bg-view-${activeView}`} />
       <Sidebar activeView={activeView} setActiveView={setActiveView} />
       
       <main className="main-content">

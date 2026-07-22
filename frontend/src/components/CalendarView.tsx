@@ -124,20 +124,32 @@ export function CalendarView({ refreshTrigger }: CalendarViewProps) {
   return (
     <div className="relative w-full">
       <div className="relative mx-auto max-w-7xl px-8 py-6">
-        <header>
-          <div className="eyebrow">Atelier · Agenda</div>
-          <h1 className="mt-2 font-display text-5xl text-[color:var(--color-primary)]">
-            Calendario de Citas
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Visualiza y organiza las citas de pruebas de trajes de las clientas.
-          </p>
-          <div className="gold-rule mt-6 max-w-md" />
+        <header className="rounded-2xl border border-[color:var(--color-border)] border-l-4 border-l-[color:var(--color-primary)] bg-[color:var(--color-surface-elevated)]/95 p-6 shadow-md backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="eyebrow font-semibold text-[color:var(--color-primary)] opacity-90">Atelier · Agenda</div>
+            <div className="flex items-center gap-4 mt-1">
+              <img src="/design/crowns.png" alt="Corona Emblem" className="h-12 w-auto object-contain drop-shadow-md" />
+              <h1 className="font-display text-5xl text-[color:var(--color-primary)] font-bold tracking-tight">
+                Calendario de Citas
+              </h1>
+            </div>
+            <p className="mt-2 max-w-2xl text-sm text-[color:var(--color-foreground)] font-medium">
+              Visualiza y organiza las citas de pruebas de trajes de las clientas.
+            </p>
+          </div>
+          <div className="hidden md:flex items-center gap-3 bg-[color-mix(in_oklab,var(--color-surface)_90%,transparent)] p-3 rounded-xl border border-[color:var(--color-border)] shadow-xs">
+            <img src="/design/green-element.png" alt="Detalle" className="h-10 w-10 rounded-md object-cover shadow-inner" />
+            <div className="text-xs">
+              <span className="font-semibold block text-[color:var(--color-primary)]">Gestión de Citas</span>
+              <span className="text-muted-foreground font-medium">Agenda de Pruebas</span>
+            </div>
+          </div>
         </header>
+        <div className="gold-rule mt-6 max-w-md" />
 
-        <section className="mt-10 overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-surface-elevated shadow-sm">
+        <section className="mt-10 overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-elevated)] shadow-md">
           {/* Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--color-border)] px-8 py-5">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--color-border)] bg-[color:var(--color-surface-elevated)] px-8 py-5">
             <div className="flex items-baseline gap-3">
               <h2 className="font-display text-3xl text-foreground font-semibold">{MONTHS[month]}</h2>
               <span className="eyebrow tabular">{year}</span>
@@ -168,7 +180,7 @@ export function CalendarView({ refreshTrigger }: CalendarViewProps) {
           </div>
 
           {/* Weekday Header */}
-          <div className="grid grid-cols-7 border-b border-[color:var(--color-border)] bg-surface">
+          <div className="grid grid-cols-7 border-b border-[color:var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface)_70%,var(--color-background))]">
             {WEEKDAYS.map((d) => (
               <div key={d} className="eyebrow px-3 py-3 text-center font-bold">
                 {d}
@@ -177,13 +189,13 @@ export function CalendarView({ refreshTrigger }: CalendarViewProps) {
           </div>
 
           {/* Days Grid */}
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7 bg-[color:var(--color-surface-elevated)]">
             {cells.map((day, idx) => {
               if (day === null) {
                 return (
                   <div
                     key={`empty-${idx}`}
-                    className="min-h-[120px] border-b border-r border-[color:var(--color-border)] bg-[color-mix(in_oklab,var(--color-muted)_50%,transparent)]"
+                    className="min-h-[120px] border-b border-r border-[color:var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface)_50%,var(--color-background))]"
                   />
                 );
               }
