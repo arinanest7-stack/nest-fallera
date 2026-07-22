@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ClientManager } from './components/ClientManager';
 import { CalendarView } from './components/CalendarView';

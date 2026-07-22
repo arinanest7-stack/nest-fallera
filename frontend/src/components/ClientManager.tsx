@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Cliente, Traje, Cita } from '../types';
+import { useState, useEffect } from 'react';
+import { Plus, Pencil, Trash2, CalendarPlus, Scissors, X } from 'lucide-react';
+import { Cliente, Traje } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -7,103 +8,47 @@ interface ClientManagerProps {
   onRefreshCitas: () => void;
 }
 
-export const ClientManager: React.FC<ClientManagerProps> = ({ onRefreshCitas }) => {
+export function ClientManager({ onRefreshCitas }: ClientManagerProps) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [trajes, setTrajes] = useState<Traje[]>([]);
-  
+
   // Formulario nuevo cliente
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [pagado, setPagado] = useState(0);
+  const [pagado, setPagado] = useState<number | ''>('');
   const [selectedTrajes, setSelectedTrajes] = useState<number[]>([]);
-  
-  // Cita inicial opcional
-  const [crearCitaInicial, setCrearCitaInicial] = useState(false);
-  const [citaTitulo, setCitaTitulo] = useState('1ª prueba');
-  const [citaFecha, setCitaFecha] = useState('');
-  const [citaHora, setCitaHora] = useState('09:00');
+  const [programarCitaInicial, setProgramarCitaInicial] = useState(false);
 
-  // Modales
+  // Modal Edición
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
-  const [addingCitaCliente, setAddingCitaCliente] = useState<Cliente | null>(null);
-  
-  // Formulario añadir cita
-  const [nuevaCitaTitulo, setNuevaCitaTitulo] = useState('Prueba');
-  const [nuevaCitaFecha, setNuevaCitaFecha] = useState('');
-  const [nuevaCitaHora, setNuevaCitaHora] = useState('10:00');
 
-  const fetchClientes = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/clientes`);
-      if (res.ok) {
-        const data = await res.json();
-        setClientes(data);
-      }
-    } catch (e) {
-      console.error('Error fetching clients:', e);
-    }
-  };
+  // Modal Cita
+  const [citaModalCliente, setCitaModalCliente] = useState<Cliente | null>(null);
+  const [citaTitulo, setCitaTitulo] = useState('Prueba');
+  const [citaFechaHora, setCitaFechaHora] = useState('');
 
-  const fetchTrajes = async () => {
+  const fetchData = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/trajes`);
-      if (res.ok) {
-        const data = await res.json();
-        setTrajes(data);
+      const [resClientes, resTrajes] = await Promise.all([
+        fetch(`${API_URL}/api/clientes`),
+        fetch(`${API_URL}/api/trajes`),
+      ]);
+      if (resClientes.ok) {
+        const dataClientes = await resClientes.json();
+        setClientes(dataClientes);
       }
-    } catch (e) {
-      console.error('Error fetching trajes:', e);
+      if (resTrajes.ok) {
+        const dataTrajes = await resTrajes.json();
+        setTrajes(dataTrajes);
+      }
+    } catch (error) {
+      console.error('Error cargando datos:', error);
     }
   };
 
   useEffect(() => {
-    fetchClientes();
-    fetchTrajes();
+    fetchData();
   }, []);
-
-  const handleCreateCliente = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nombre.trim()) return;
-
-    let cita_inicial = undefined;
-    if (crearCitaInicial && citaFecha && citaHora) {
-      cita_inicial = {
-        titulo: citaTitulo,
-        fecha_hora: new Date(`${citaFecha}T${citaHora}:00`).toISOString(),
-      };
-    }
-
-    try {
-      const res = await fetch(`${API_URL}/api/clientes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre_apellido: nombre,
-          telefono,
-          pagado,
-          traje_ids: selectedTrajes,
-          cita_inicial,
-        }),
-      });
-
-      if (res.ok) {
-        // Limpiar formulario
-        setNombre('');
-        setTelefono('');
-        setPagado(0);
-        setSelectedTrajes([]);
-        setCrearCitaInicial(false);
-        setCitaTitulo('1ª prueba');
-        setCitaFecha('');
-        setCitaHora('09:00');
-        
-        fetchClientes();
-        onRefreshCitas();
-      }
-    } catch (e) {
-      console.error('Error creating client:', e);
-    }
-  };
 
   const handleToggleTraje = (id: number) => {
     if (selectedTrajes.includes(id)) {
@@ -113,19 +58,82 @@ export const ClientManager: React.FC<ClientManagerProps> = ({ onRefreshCitas }) 
     }
   };
 
+  const handleCreateCliente = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nombre.trim()) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/clientes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre_apellido: nombre,
+          telefono,
+          pagado: Number(pagado) || 0,
+          traje_ids: selectedTrajes,
+        }),
+      });
+
+      if (res.ok) {
+        const newCliente = await res.json();
+
+        if (programarCitaInicial && newCliente.id) {
+          const defaultDate = new Date();
+          defaultDate.setDate(defaultDate.getDate() + 7);
+          const fechaStr = defaultDate.toISOString().slice(0, 16);
+
+          await fetch(`${API_URL}/api/citas`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cliente_id: newCliente.id,
+              titulo: '1ª prueba',
+              fecha_hora: fechaStr,
+            }),
+          });
+        }
+
+        setNombre('');
+        setTelefono('');
+        setPagado('');
+        setSelectedTrajes([]);
+        setProgramarCitaInicial(false);
+        fetchData();
+        onRefreshCitas();
+      }
+    } catch (error) {
+      console.error('Error creando cliente:', error);
+    }
+  };
+
+  const handleDeleteCliente = async (id: number) => {
+    if (!confirm('¿Estás seguro de eliminar este cliente?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/clientes/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        fetchData();
+        onRefreshCitas();
+      }
+    } catch (error) {
+      console.error('Error eliminando cliente:', error);
+    }
+  };
+
   const handleToggleEditTraje = (id: number) => {
     if (!editingCliente) return;
-    const isSelected = editingCliente.trajes.some(t => t.id === id);
+    const isSelected = editingCliente.trajes.some((t) => t.id === id);
     let updatedTrajes: Traje[];
     if (isSelected) {
-      updatedTrajes = editingCliente.trajes.filter(t => t.id !== id);
+      updatedTrajes = editingCliente.trajes.filter((t) => t.id !== id);
     } else {
-      const trajeObj = trajes.find(t => t.id === id);
+      const trajeObj = trajes.find((t) => t.id === id);
       updatedTrajes = trajeObj ? [...editingCliente.trajes, trajeObj] : editingCliente.trajes;
     }
     setEditingCliente({
       ...editingCliente,
-      trajes: updatedTrajes
+      trajes: updatedTrajes,
     });
   };
 
@@ -139,434 +147,464 @@ export const ClientManager: React.FC<ClientManagerProps> = ({ onRefreshCitas }) 
           nombre_apellido: editingCliente.nombre_apellido,
           telefono: editingCliente.telefono,
           pagado: editingCliente.pagado,
-          traje_ids: editingCliente.trajes.map(t => t.id),
+          traje_ids: editingCliente.trajes.map((t) => t.id),
         }),
       });
 
       if (res.ok) {
         setEditingCliente(null);
-        fetchClientes();
-        onRefreshCitas();
+        fetchData();
       }
-    } catch (e) {
-      console.error('Error saving edits:', e);
+    } catch (error) {
+      console.error('Error editando cliente:', error);
     }
   };
 
-  const handleDeleteCliente = async (id: number) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este cliente? Se borrarán también sus citas.')) return;
-    try {
-      const res = await fetch(`${API_URL}/api/clientes/${id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        fetchClientes();
-        onRefreshCitas();
-      }
-    } catch (e) {
-      console.error('Error deleting client:', e);
-    }
-  };
-
-  const handleAddCita = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!addingCitaCliente || !nuevaCitaFecha || !nuevaCitaHora) return;
-
+  const handleCreateCita = async () => {
+    if (!citaModalCliente || !citaFechaHora) return;
     try {
       const res = await fetch(`${API_URL}/api/citas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cliente_id: addingCitaCliente.id,
-          titulo: nuevaCitaTitulo,
-          fecha_hora: new Date(`${nuevaCitaFecha}T${nuevaCitaHora}:00`).toISOString(),
+          cliente_id: citaModalCliente.id,
+          titulo: citaTitulo,
+          fecha_hora: citaFechaHora,
         }),
       });
-
       if (res.ok) {
-        setAddingCitaCliente(null);
-        setNuevaCitaTitulo('Prueba');
-        setNuevaCitaFecha('');
-        setNuevaCitaHora('10:00');
-        fetchClientes();
+        setCitaModalCliente(null);
+        setCitaFechaHora('');
+        fetchData();
         onRefreshCitas();
       }
-    } catch (e) {
-      console.error('Error adding appointment:', e);
+    } catch (error) {
+      console.error('Error agregando cita:', error);
     }
   };
 
   const handleDeleteCita = async (citaId: number) => {
-    if (!confirm('¿Deseas eliminar esta cita?')) return;
+    if (!confirm('¿Eliminar esta cita?')) return;
     try {
       const res = await fetch(`${API_URL}/api/citas/${citaId}`, {
         method: 'DELETE',
       });
       if (res.ok) {
-        fetchClientes();
+        fetchData();
         onRefreshCitas();
       }
-    } catch (e) {
-      console.error('Error deleting appointment:', e);
+    } catch (error) {
+      console.error('Error eliminando cita:', error);
     }
   };
 
-  const getTagClass = (name: string): string => {
-    const lowercase = name.toLowerCase();
-    if (lowercase.includes('siglo')) return 'tag tag-siglo';
-    if (lowercase.includes('huertana') || lowercase.includes('huerana')) return 'tag tag-huertana';
-    if (lowercase.includes('farol')) return 'tag tag-farol';
-    if (lowercase.includes('antig')) return 'tag tag-antigua';
-    if (lowercase.includes('chaleco')) return 'tag tag-chaleco';
-    return 'tag tag-default';
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return dateString;
+    }
   };
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const getToneClass = (index: number) => {
+    const tones = [
+      'bg-[color-mix(in_oklab,var(--color-gold)_14%,transparent)] text-[color:var(--color-foreground)] border border-[color:var(--color-border)]',
+      'bg-[color-mix(in_oklab,var(--color-merlot)_12%,transparent)] text-[color:var(--color-merlot)] border border-[color-mix(in_oklab,var(--color-merlot)_25%,transparent)]',
+      'bg-[color-mix(in_oklab,var(--color-teal)_12%,transparent)] text-[color:var(--color-teal)] border border-[color-mix(in_oklab,var(--color-teal)_25%,transparent)]',
+      'bg-[color-mix(in_oklab,var(--color-navy)_12%,transparent)] text-[color:var(--color-navy)] border border-[color-mix(in_oklab,var(--color-navy)_25%,transparent)]',
+      'bg-[color-mix(in_oklab,var(--color-plum)_12%,transparent)] text-[color:var(--color-plum)] border border-[color-mix(in_oklab,var(--color-plum)_25%,transparent)]',
+    ];
+    return tones[index % tones.length];
   };
 
   return (
-    <div className="client-manager-container">
-      <div className="page-header">
-        <h1 className="page-title">Gestión de Clientes</h1>
-        <p className="page-subtitle">Registra clientes, selecciona sus trajes y agenda sus citas de prueba.</p>
-      </div>
+    <div className="relative w-full">
+      <div className="relative mx-auto max-w-7xl px-8 py-6">
+        {/* Header */}
+        <header>
+          <div className="eyebrow">Atelier · Gestión</div>
+          <h1 className="mt-2 font-display text-5xl text-[color:var(--color-primary)]">
+            Gestión de Clientas
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Registra clientas, selecciona sus trajes y agenda sus citas de prueba en tu taller.
+          </p>
+          <div className="gold-rule mt-6 max-w-md" />
+        </header>
 
-      {/* Formulario de Alta */}
-      <div className="card">
-        <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>🧵 Nuevo Encargo / Cliente</h2>
-        <form onSubmit={handleCreateCliente}>
-          <div className="form-grid">
-            <div className="form-group">
-              <label>Nombre y Apellido</label>
+        {/* Card Nuevo Encargo */}
+        <form onSubmit={handleCreateCliente} className="mt-10 rounded-xl border border-[color:var(--color-border)] bg-surface-elevated shadow-[0_1px_0_rgba(255,255,255,0.6),0_10px_30px_-20px_rgba(110,44,41,0.35)]">
+          <div className="flex items-center gap-3 border-b border-[color:var(--color-border)] px-8 py-5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--color-primary)_10%,transparent)] text-[color:var(--color-primary)]">
+              <Scissors className="h-4 w-4" strokeWidth={1.6} />
+            </span>
+            <h2 className="font-display text-2xl text-foreground font-semibold">
+              Nuevo Encargo / Clienta
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 px-8 py-6 md:grid-cols-3">
+            <label className="flex flex-col gap-2">
+              <span className="eyebrow">Nombre y Apellido</span>
               <input
                 type="text"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej. Maria Clara"
+                placeholder="Ej. María Clara"
+                className="rounded-md border border-[color:var(--color-input)] bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-gold)] focus:border-transparent transition-all"
                 required
               />
-            </div>
-            <div className="form-group">
-              <label>Teléfono</label>
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="eyebrow">Teléfono</span>
               <input
                 type="text"
                 value={telefono}
                 onChange={(e) => setTelefono(e.target.value)}
                 placeholder="Ej. +34 600 333 444"
+                className="rounded-md border border-[color:var(--color-input)] bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-gold)] focus:border-transparent transition-all"
               />
-            </div>
-            <div className="form-group">
-              <label>Importe Pagado Inicial (€)</label>
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="eyebrow">Importe Pagado Inicial (€)</span>
               <input
                 type="number"
                 value={pagado}
-                onChange={(e) => setPagado(parseFloat(e.target.value) || 0)}
+                onChange={(e) => setPagado(e.target.value === '' ? '' : parseFloat(e.target.value))}
                 placeholder="0"
                 min="0"
+                className="rounded-md border border-[color:var(--color-input)] bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-gold)] focus:border-transparent transition-all"
               />
-            </div>
+            </label>
           </div>
 
-          <div className="form-group" style={{ marginBottom: '16px' }}>
-            <label>Tipos de Fallera / Trajes (Selección Múltiple)</label>
-            <div className="multiselect-container">
-              {trajes.map((traje) => {
-                const isSelected = selectedTrajes.includes(traje.id);
+          <div className="px-8 pb-6">
+            <div className="eyebrow mb-3">Tipos de Fallera · Selección múltiple</div>
+            <div className="flex flex-wrap gap-2">
+              {trajes.map((traje, idx) => {
+                const on = selectedTrajes.includes(traje.id);
+                const toneClass = getToneClass(idx);
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={traje.id}
-                    className={`multiselect-item ${isSelected ? 'selected' : ''}`}
                     onClick={() => handleToggleTraje(traje.id)}
+                    className={[
+                      "group inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all cursor-pointer",
+                      on
+                        ? "bg-[color:var(--color-primary)] text-[color:var(--color-primary-foreground)] border-transparent shadow-sm"
+                        : `${toneClass} hover:border-[color:var(--color-border-strong)]`,
+                    ].join(" ")}
                   >
                     <span>{traje.nombre}</span>
-                    <span style={{ opacity: 0.7 }}>({traje.precio}€)</span>
-                  </div>
+                    <span className="tabular text-xs opacity-80">
+                      ({Number(traje.precio).toFixed(2)}€)
+                    </span>
+                  </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Toggle para Cita Inicial */}
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', textTransform: 'none' }}>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[color:var(--color-border)] px-8 py-5">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
               <input
                 type="checkbox"
-                checked={crearCitaInicial}
-                onChange={(e) => setCrearCitaInicial(e.target.checked)}
+                checked={programarCitaInicial}
+                onChange={(e) => setProgramarCitaInicial(e.target.checked)}
+                className="h-4 w-4 rounded border-[color:var(--color-border-strong)] accent-[color:var(--color-primary)] cursor-pointer"
               />
-              <span>Programar cita de prueba inicial inmediatamente</span>
+              Programar cita de prueba inicial inmediatamente
             </label>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-md bg-[color:var(--color-primary)] px-6 py-2.5 text-sm font-semibold text-[color:var(--color-primary-foreground)] transition-all hover:bg-[color:var(--color-primary-deep)] shadow-md cursor-pointer"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.2} />
+              Crear Clienta y Encargo
+            </button>
+          </div>
+        </form>
+
+        {/* Tabla Clientas */}
+        <section className="mt-10 overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-surface-elevated shadow-sm">
+          <div className="border-b border-[color:var(--color-border)] px-8 py-5">
+            <div className="flex items-baseline justify-between">
+              <h2 className="font-display text-2xl text-foreground font-semibold">Clientas activas</h2>
+              <span className="eyebrow">{clientes.length} registros</span>
+            </div>
           </div>
 
-          {crearCitaInicial && (
-            <div className="form-grid" style={{ padding: '16px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '6px', marginBottom: '20px', border: '1px solid var(--border-color)' }}>
-              <div className="form-group">
-                <label>Detalle / Título Cita</label>
-                <input
-                  type="text"
-                  value={citaTitulo}
-                  onChange={(e) => setCitaTitulo(e.target.value)}
-                  placeholder="Ej. 1ª prueba"
-                />
-              </div>
-              <div className="form-group">
-                <label>Fecha</label>
-                <input
-                  type="date"
-                  value={citaFecha}
-                  onChange={(e) => setCitaFecha(e.target.value)}
-                  required={crearCitaInicial}
-                />
-              </div>
-              <div className="form-group">
-                <label>Hora</label>
-                <input
-                  type="time"
-                  value={citaHora}
-                  onChange={(e) => setCitaHora(e.target.value)}
-                  required={crearCitaInicial}
-                />
-              </div>
-            </div>
-          )}
-
-          <button type="submit" className="button">
-            Crear Cliente y Encargo
-          </button>
-        </form>
-      </div>
-
-      {/* Tabla de Clientes */}
-      <div className="notion-table-container">
-        <table className="notion-table">
-          <thead>
-            <tr>
-              <th>Nombre y Apellido</th>
-              <th>Tipos de Fallera</th>
-              <th>Precio Total</th>
-              <th>Citas</th>
-              <th>Teléfono</th>
-              <th>Pagado</th>
-              <th>Falta por pagar</th>
-              <th style={{ textAlign: 'right' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clientes.length === 0 ? (
-              <tr>
-                <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px' }}>
-                  No hay clientes registrados. ¡Agrega el primero arriba!
-                </td>
-              </tr>
-            ) : (
-              clientes.map((cliente) => {
-                const totalPrecio = cliente.trajes.reduce((acc, t) => acc + parseFloat(t.precio as any), 0);
-                const pagadoM = parseFloat(cliente.pagado as any) || 0;
-                const faltaPagar = totalPrecio - pagadoM;
-
-                return (
-                  <tr key={cliente.id}>
-                    <td style={{ fontWeight: 600 }}>{cliente.nombre_apellido}</td>
-                    <td>
-                      <div className="tag-container">
-                        {cliente.trajes.map((t) => (
-                          <span key={t.id} className={getTagClass(t.nombre)}>
-                            {t.nombre}
-                          </span>
-                        ))}
-                        {cliente.trajes.length === 0 && (
-                          <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Ninguno</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ fontWeight: 500 }}>{totalPrecio} €</td>
-                    <td>
-                      <div className="citas-list">
-                        {cliente.citas.map((c) => (
-                          <div key={c.id} className="cita-pill">
-                            <span>📅 {c.titulo}</span>
-                            <span className="cita-date">({formatDate(c.fecha_hora)})</span>
-                            <button
-                              onClick={() => handleDeleteCita(c.id)}
-                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', marginLeft: '4px', fontSize: '10px' }}
-                              title="Borrar cita"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                        {cliente.citas.length === 0 && (
-                          <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Sin citas</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{cliente.telefono || '-'}</td>
-                    <td className="amount-paid">{pagadoM} €</td>
-                    <td>
-                      {faltaPagar > 0 ? (
-                        <span className="amount-pending">{faltaPagar} €</span>
-                      ) : (
-                        <span className="amount-paid" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                          ✓ Cobrado
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '8px' }}>
-                        <button
-                          onClick={() => setAddingCitaCliente(cliente)}
-                          className="button button-secondary"
-                          style={{ padding: '6px 10px', fontSize: '12px' }}
-                          title="Añadir Cita"
-                        >
-                          + Cita
-                        </button>
-                        <button
-                          onClick={() => setEditingCliente(cliente)}
-                          className="button button-secondary"
-                          style={{ padding: '6px 10px', fontSize: '12px' }}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCliente(cliente.id)}
-                          className="button button-danger"
-                          style={{ padding: '6px 10px', fontSize: '12px' }}
-                        >
-                          Eliminar
-                        </button>
-                      </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-[color:var(--color-border)] text-left bg-surface">
+                  {["Nombre", "Trajes", "Precio total", "Citas", "Teléfono", "Pagos", "Acciones"].map((h) => (
+                    <th key={h} className="eyebrow px-6 py-4 text-left font-bold">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {clientes.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                      No hay clientes registrados. ¡Agrega el primero arriba!
                     </td>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                ) : (
+                  clientes.map((c) => {
+                    const totalPrecio = c.trajes.reduce((acc, t) => acc + parseFloat(t.precio as any), 0);
+                    const pagadoM = parseFloat(c.pagado as any) || 0;
+                    const faltaPagar = Math.max(0, totalPrecio - pagadoM);
+                    const pct = totalPrecio > 0 ? Math.min(100, (pagadoM / totalPrecio) * 100) : 0;
 
-      {/* Modal Editar Cliente */}
-      {editingCliente && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="modal-title">Editar Cliente: {editingCliente.nombre_apellido}</h3>
-            
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label>Nombre y Apellido</label>
-              <input
-                type="text"
-                value={editingCliente.nombre_apellido}
-                onChange={(e) => setEditingCliente({ ...editingCliente, nombre_apellido: e.target.value })}
-              />
-            </div>
-            
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label>Teléfono</label>
-              <input
-                type="text"
-                value={editingCliente.telefono}
-                onChange={(e) => setEditingCliente({ ...editingCliente, telefono: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label>Importe Pagado (€)</label>
-              <input
-                type="number"
-                value={editingCliente.pagado}
-                onChange={(e) => setEditingCliente({ ...editingCliente, pagado: parseFloat(e.target.value) || 0 })}
-                min="0"
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label>Tipos de Fallera / Trajes</label>
-              <div className="multiselect-container">
-                {trajes.map((traje) => {
-                  const isSelected = editingCliente.trajes.some((t) => t.id === traje.id);
-                  return (
-                    <div
-                      key={traje.id}
-                      className={`multiselect-item ${isSelected ? 'selected' : ''}`}
-                      onClick={() => handleToggleEditTraje(traje.id)}
-                    >
-                      <span>{traje.nombre}</span>
-                      <span style={{ opacity: 0.7 }}>({traje.precio}€)</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="modal-actions">
-              <button onClick={() => setEditingCliente(null)} className="button button-secondary">
-                Cancelar
-              </button>
-              <button onClick={handleSaveEditCliente} className="button">
-                Guardar Cambios
-              </button>
-            </div>
+                    return (
+                      <tr
+                        key={c.id}
+                        className="group border-b border-[color:var(--color-border)] last:border-0 transition-colors hover:bg-[color-mix(in_oklab,var(--color-gold)_8%,transparent)]"
+                      >
+                        <td className="px-6 py-5">
+                          <div className="font-display text-lg text-foreground font-semibold">
+                            {c.nombre_apellido}
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex flex-wrap gap-1.5">
+                            {c.trajes.map((t, idx) => (
+                              <span
+                                key={t.id}
+                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${getToneClass(idx)}`}
+                              >
+                                {t.nombre}
+                              </span>
+                            ))}
+                            {c.trajes.length === 0 && (
+                              <span className="text-xs text-muted-foreground">Ninguno</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 tabular font-display text-lg text-foreground font-semibold">
+                          {totalPrecio} €
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex flex-col gap-1.5">
+                            {c.citas.map((cita) => (
+                              <div
+                                key={cita.id}
+                                className="inline-flex items-center justify-between gap-2 rounded-md border border-[color:var(--color-border)] bg-surface px-2.5 py-1 text-xs text-muted-foreground"
+                              >
+                                <span className="inline-flex items-center gap-1.5">
+                                  <CalendarPlus className="h-3.5 w-3.5 text-[color:var(--color-primary)]" strokeWidth={1.8} />
+                                  <span className="tabular font-medium text-foreground">
+                                    {cita.titulo} ({formatDate(cita.fecha_hora)})
+                                  </span>
+                                </span>
+                                <button
+                                  onClick={() => handleDeleteCita(cita.id)}
+                                  className="text-muted-foreground hover:text-[color:var(--color-primary)] cursor-pointer"
+                                  title="Eliminar cita"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                            {c.citas.length === 0 && (
+                              <span className="text-xs text-muted-foreground">Sin citas</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 tabular text-muted-foreground">
+                          {c.telefono || '-'}
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex flex-col gap-1.5 min-w-[130px]">
+                            <div className="flex items-baseline justify-between gap-4 text-xs font-medium">
+                              <span className="text-[color:var(--color-teal)] tabular font-semibold">
+                                {pagadoM} € pagado
+                              </span>
+                              <span
+                                className={
+                                  faltaPagar > 0
+                                    ? "text-[color:var(--color-primary)] tabular font-bold"
+                                    : "text-muted-foreground tabular"
+                                }
+                              >
+                                {faltaPagar} € falta
+                              </span>
+                            </div>
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--color-primary)_12%,transparent)]">
+                              <div
+                                className="h-full bg-[color:var(--color-gold)] transition-all duration-300"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => setCitaModalCliente(c)}
+                              title="Añadir cita"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[color:var(--color-border)] text-muted-foreground hover:bg-[color-mix(in_oklab,var(--color-gold)_15%,transparent)] hover:text-foreground transition-colors cursor-pointer"
+                            >
+                              <Plus className="h-4 w-4" strokeWidth={1.8} />
+                            </button>
+                            <button
+                              onClick={() => setEditingCliente(c)}
+                              title="Editar cliente"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[color:var(--color-border)] text-muted-foreground hover:bg-[color-mix(in_oklab,var(--color-gold)_15%,transparent)] hover:text-foreground transition-colors cursor-pointer"
+                            >
+                              <Pencil className="h-4 w-4" strokeWidth={1.8} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCliente(c.id)}
+                              title="Eliminar cliente"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[color:var(--color-border)] text-[color:var(--color-primary)] hover:bg-[color-mix(in_oklab,var(--color-primary)_10%,transparent)] transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="h-4 w-4" strokeWidth={1.8} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Modal Añadir Cita */}
-      {addingCitaCliente && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="modal-title">Nueva Cita para {addingCitaCliente.nombre_apellido}</h3>
-            <form onSubmit={handleAddCita}>
-              <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label>Detalle / Título de Prueba</label>
-                <input
-                  type="text"
-                  value={nuevaCitaTitulo}
-                  onChange={(e) => setNuevaCitaTitulo(e.target.value)}
-                  placeholder="Ej. Cita de Ajustes, 2ª Prueba"
-                  required
-                />
-              </div>
-
-              <div className="form-grid" style={{ marginBottom: '16px' }}>
-                <div className="form-group">
-                  <label>Fecha</label>
+        {/* Modal Editar Cliente */}
+        {editingCliente && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="w-full max-w-lg rounded-xl border border-[color:var(--color-border)] border-t-4 border-t-[color:var(--color-primary)] bg-surface-elevated p-8 shadow-2xl">
+              <h3 className="font-display text-2xl text-foreground font-semibold mb-4">Editar Clienta</h3>
+              <div className="flex flex-col gap-4">
+                <label className="flex flex-col gap-2">
+                  <span className="eyebrow">Nombre y Apellido</span>
                   <input
-                    type="date"
-                    value={nuevaCitaFecha}
-                    onChange={(e) => setNuevaCitaFecha(e.target.value)}
-                    required
+                    type="text"
+                    value={editingCliente.nombre_apellido}
+                    onChange={(e) => setEditingCliente({ ...editingCliente, nombre_apellido: e.target.value })}
+                    className="rounded-md border border-[color:var(--color-input)] bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--color-gold)]"
                   />
-                </div>
-                <div className="form-group">
-                  <label>Hora</label>
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className="eyebrow">Teléfono</span>
                   <input
-                    type="time"
-                    value={nuevaCitaHora}
-                    onChange={(e) => setNuevaCitaHora(e.target.value)}
-                    required
+                    type="text"
+                    value={editingCliente.telefono}
+                    onChange={(e) => setEditingCliente({ ...editingCliente, telefono: e.target.value })}
+                    className="rounded-md border border-[color:var(--color-input)] bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--color-gold)]"
                   />
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className="eyebrow">Importe Pagado (€)</span>
+                  <input
+                    type="number"
+                    value={editingCliente.pagado}
+                    onChange={(e) => setEditingCliente({ ...editingCliente, pagado: parseFloat(e.target.value) || 0 })}
+                    className="rounded-md border border-[color:var(--color-input)] bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--color-gold)]"
+                  />
+                </label>
+                <div className="flex flex-col gap-2">
+                  <span className="eyebrow">Trajes Encargados</span>
+                  <div className="flex flex-wrap gap-2">
+                    {trajes.map((traje, idx) => {
+                      const isSelected = editingCliente.trajes.some((t) => t.id === traje.id);
+                      return (
+                        <button
+                          type="button"
+                          key={traje.id}
+                          onClick={() => handleToggleEditTraje(traje.id)}
+                          className={[
+                            "rounded-full border px-3 py-1.5 text-xs font-medium cursor-pointer transition-all",
+                            isSelected
+                              ? "bg-[color:var(--color-primary)] text-[color:var(--color-primary-foreground)] border-transparent"
+                              : `${getToneClass(idx)}`,
+                          ].join(" ")}
+                        >
+                          {traje.nombre}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-
-              <div className="modal-actions">
-                <button type="button" onClick={() => setAddingCitaCliente(null)} className="button button-secondary">
+              <div className="mt-8 flex justify-end gap-3">
+                <button
+                  onClick={() => setEditingCliente(null)}
+                  className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm text-foreground hover:bg-surface cursor-pointer"
+                >
                   Cancelar
                 </button>
-                <button type="submit" className="button">
-                  Añadir Cita
+                <button
+                  onClick={handleSaveEditCliente}
+                  className="rounded-md bg-[color:var(--color-primary)] px-5 py-2 text-sm font-semibold text-[color:var(--color-primary-foreground)] hover:bg-[color:var(--color-primary-deep)] cursor-pointer"
+                >
+                  Guardar Cambios
                 </button>
               </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Modal Nueva Cita */}
+        {citaModalCliente && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md rounded-xl border border-[color:var(--color-border)] border-t-4 border-t-[color:var(--color-gold)] bg-surface-elevated p-8 shadow-2xl">
+              <h3 className="font-display text-2xl text-foreground font-semibold mb-2">Programar Cita</h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Clienta: <strong className="text-foreground">{citaModalCliente.nombre_apellido}</strong>
+              </p>
+              <div className="flex flex-col gap-4">
+                <label className="flex flex-col gap-2">
+                  <span className="eyebrow">Título de Cita</span>
+                  <select
+                    value={citaTitulo}
+                    onChange={(e) => setCitaTitulo(e.target.value)}
+                    className="rounded-md border border-[color:var(--color-input)] bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--color-gold)]"
+                  >
+                    <option value="1ª prueba">1ª prueba</option>
+                    <option value="2ª prueba">2ª prueba</option>
+                    <option value="Prueba final">Prueba final</option>
+                    <option value="Entrega de traje">Entrega de traje</option>
+                    <option value="Cita general">Cita general</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className="eyebrow">Fecha y Hora</span>
+                  <input
+                    type="datetime-local"
+                    value={citaFechaHora}
+                    onChange={(e) => setCitaFechaHora(e.target.value)}
+                    className="rounded-md border border-[color:var(--color-input)] bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--color-gold)]"
+                  />
+                </label>
+              </div>
+              <div className="mt-8 flex justify-end gap-3">
+                <button
+                  onClick={() => setCitaModalCliente(null)}
+                  className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm text-foreground hover:bg-surface cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateCita}
+                  className="rounded-md bg-[color:var(--color-primary)] px-5 py-2 text-sm font-semibold text-[color:var(--color-primary-foreground)] hover:bg-[color:var(--color-primary-deep)] cursor-pointer"
+                >
+                  Guardar Cita
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
-};
+}

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { DashboardData } from '../types';
+import { useState, useEffect } from 'react';
+import { Users, Euro, CalendarClock, Scissors } from 'lucide-react';
+import { Cliente, Cita, Traje } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -7,184 +8,223 @@ interface DashboardViewProps {
   refreshTrigger: number;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ refreshTrigger }) => {
-  const [data, setData] = useState<DashboardData | null>(null);
-
-  const fetchDashboardData = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/dashboard`);
-      if (res.ok) {
-        const result = await res.json();
-        setData(result);
-      }
-    } catch (e) {
-      console.error('Error fetching dashboard data:', e);
-    }
-  };
+export function DashboardView({ refreshTrigger }: DashboardViewProps) {
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [citas, setCitas] = useState<Cita[]>([]);
+  const [trajes, setTrajes] = useState<Traje[]>([]);
 
   useEffect(() => {
-    fetchDashboardData();
+    const fetchData = async () => {
+      try {
+        const [resClientes, resCitas, resTrajes] = await Promise.all([
+          fetch(`${API_URL}/api/clientes`),
+          fetch(`${API_URL}/api/citas`),
+          fetch(`${API_URL}/api/trajes`),
+        ]);
+        if (resClientes.ok) setClientes(await resClientes.json());
+        if (resCitas.ok) setCitas(await resCitas.json());
+        if (resTrajes.ok) setTrajes(await resTrajes.json());
+      } catch (error) {
+        console.error('Error cargando datos del dashboard:', error);
+      }
+    };
+    fetchData();
   }, [refreshTrigger]);
 
-  if (!data) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <p style={{ color: 'var(--text-secondary)' }}>Cargando estadísticas...</p>
-      </div>
-    );
-  }
+  // Cálculos de métricas
+  const totalClientes = clientes.length;
 
-  // Porcentaje cobrado
-  const cobradoPorcentaje = data.esperado > 0 ? Math.round((data.cobradas / data.esperado) * 100) : 0;
+  const totalEsperado = clientes.reduce((sum, c) => {
+    const totalCliente = c.trajes.reduce((tSum, t) => tSum + parseFloat(t.precio as any), 0);
+    return sum + totalCliente;
+  }, 0);
 
-  // Encontrar el valor máximo de cantidad para el gráfico de barras CSS
-  const maxCantidad = data.distribucionTrajes.reduce((max, t) => (t.cantidad > max ? t.cantidad : max), 1);
+  const totalRecaudado = clientes.reduce((sum, c) => sum + (parseFloat(c.pagado as any) || 0), 0);
+  const totalPendiente = Math.max(0, totalEsperado - totalRecaudado);
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString('es-ES', {
-      day: 'numeric',
-      month: 'long',
-      hour: '2-digit',
-      minute: '2-digit',
+  // Trajes más solicitados
+  const trajeCounts: Record<string, { count: number; precio: number }> = {};
+  trajes.forEach((t) => {
+    trajeCounts[t.nombre] = { count: 0, precio: parseFloat(t.precio as any) };
+  });
+
+  clientes.forEach((c) => {
+    c.trajes.forEach((t) => {
+      if (trajeCounts[t.nombre]) {
+        trajeCounts[t.nombre].count += 1;
+      } else {
+        trajeCounts[t.nombre] = { count: 1, precio: parseFloat(t.precio as any) };
+      }
     });
-  };
+  });
+
+  const trajesPopulares = Object.entries(trajeCounts)
+    .map(([nombre, { count, precio }]) => ({ nombre, count, precio }))
+    .sort((a, b) => b.count - a.count);
+
+  const maxCount = Math.max(...trajesPopulares.map((t) => t.count), 1);
+
+  // Top deudores
+  const deudores = clientes
+    .map((c) => {
+      const total = c.trajes.reduce((sum, t) => sum + parseFloat(t.precio as any), 0);
+      const pagado = parseFloat(c.pagado as any) || 0;
+      const pendiente = total - pagado;
+      return { ...c, pendiente };
+    })
+    .filter((c) => c.pendiente > 0)
+    .sort((a, b) => b.pendiente - a.pendiente)
+    .slice(0, 5);
+
+  // Próximas citas ordenadas
+  const proximasCitas = [...citas]
+    .sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime())
+    .slice(0, 5);
+
+  const stats = [
+    { label: "Clientas activas", value: totalClientes.toString(), Icon: Users },
+    { label: "Ingresos totales", value: `${totalEsperado} €`, Icon: Euro },
+    { label: "Pagos pendientes", value: `${totalPendiente} €`, Icon: Scissors },
+    { label: "Próximas citas", value: citas.length.toString(), Icon: CalendarClock },
+  ];
 
   return (
-    <div className="dashboard-container">
-      <div className="page-header">
-        <h1 className="page-title">Dashboard del Taller</h1>
-        <p className="page-subtitle">Resumen general de facturación, pedidos y próximas citas de costura.</p>
-      </div>
+    <div className="relative w-full">
+      <div className="relative mx-auto max-w-7xl px-8 py-6">
+        <header>
+          <div className="eyebrow">Atelier · Resumen</div>
+          <h1 className="mt-2 font-display text-5xl text-[color:var(--color-primary)]">
+            Dashboard
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Un vistazo al estado del taller: encargos, pagos y próximas pruebas.
+          </p>
+          <div className="gold-rule mt-6 max-w-md" />
+        </header>
 
-      {/* Grid de Tarjetas de Métricas */}
-      <div className="dashboard-grid">
-        <div className="stat-card">
-          <span className="stat-title">Clientas Activas</span>
-          <span className="stat-value">{data.totalClientes}</span>
-          <span className="stat-subtitle">En el sistema</span>
-        </div>
-
-        <div className="stat-card">
-          <span className="stat-title">Presupuesto Esperado</span>
-          <span className="stat-value">{data.esperado.toFixed(2)} €</span>
-          <span className="stat-subtitle">Valor total de encargos</span>
-        </div>
-
-        <div className="stat-card">
-          <span className="stat-title">Total Cobrado</span>
-          <span className="stat-value" style={{ color: '#10b981' }}>{data.cobradas.toFixed(2)} €</span>
-          <div className="stat-subtitle">
-            {cobradoPorcentaje}% recaudado
-            <div className="stat-progress-bar">
-              <div className="stat-progress" style={{ width: `${cobradoPorcentaje}%`, backgroundColor: '#10b981' }}></div>
-            </div>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <span className="stat-title">Pendiente de Cobro</span>
-          <span className="stat-value" style={{ color: '#ef4444' }}>{data.pendiente.toFixed(2)} €</span>
-          <div className="stat-subtitle">
-            {(100 - cobradoPorcentaje)}% pendiente
-            <div className="stat-progress-bar">
-              <div className="stat-progress" style={{ width: `${100 - cobradoPorcentaje}%`, backgroundColor: '#ef4444' }}></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Secciones del Dashboard */}
-      <div className="dashboard-sections">
-        {/* Gráfico de Trajes más populares */}
-        <div className="card">
-          <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '20px' }}>📊 Tipos de Fallera Encargados</h2>
-          <div className="bar-chart-container">
-            {data.distribucionTrajes.map((traje) => {
-              const pct = (traje.cantidad / maxCantidad) * 100;
-              return (
-                <div key={traje.nombre} className="bar-row">
-                  <div className="bar-label-container">
-                    <span className="bar-label">{traje.nombre}</span>
-                    <span className="bar-value">{traje.cantidad} {traje.cantidad === 1 ? 'encargo' : 'encargos'}</span>
+        {/* Tarjetas de Métricas */}
+        <section className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {stats.map((s) => (
+            <div
+              key={s.label}
+              className="relative overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-surface-elevated p-6 shadow-sm"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="eyebrow">{s.label}</div>
+                  <div className="mt-3 font-display text-4xl text-[color:var(--color-primary)] tabular font-bold">
+                    {s.value}
                   </div>
-                  <div className="bar-outer">
-                    <div className="bar-inner" style={{ width: `${pct}%` }}></div>
+                </div>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--color-gold)_18%,transparent)] text-[color:var(--color-primary-deep)]">
+                  <s.Icon className="h-4 w-4" strokeWidth={1.6} />
+                </span>
+              </div>
+              <div className="gold-rule mt-4" />
+            </div>
+          ))}
+        </section>
+
+        {/* Secciones Dashboard */}
+        <section className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Próximas Citas */}
+          <div className="rounded-xl border border-[color:var(--color-border)] bg-surface-elevated lg:col-span-2 shadow-sm">
+            <div className="border-b border-[color:var(--color-border)] px-6 py-4">
+              <h2 className="font-display text-2xl text-foreground font-semibold">Próximas citas</h2>
+            </div>
+            <ul className="divide-y divide-[color:var(--color-border)]">
+              {proximasCitas.length === 0 ? (
+                <li className="px-6 py-8 text-center text-sm text-muted-foreground">
+                  No hay citas programadas actualmente.
+                </li>
+              ) : (
+                proximasCitas.map((cita) => {
+                  const dateObj = new Date(cita.fecha_hora);
+                  return (
+                    <li key={cita.id} className="flex items-center gap-4 px-6 py-4">
+                      <div className="flex h-12 w-12 flex-col items-center justify-center rounded-md bg-[color-mix(in_oklab,var(--color-primary)_10%,transparent)] text-[color:var(--color-primary)] border border-[color-mix(in_oklab,var(--color-primary)_20%,transparent)]">
+                        <span className="tabular text-xs font-bold uppercase">
+                          {dateObj.toLocaleDateString("es-ES", { month: "short" })}
+                        </span>
+                        <span className="font-display text-lg leading-none font-bold">
+                          {dateObj.getDate()}
+                        </span>
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="font-medium text-foreground text-sm font-semibold">
+                          {cita.cliente_nombre || 'Clienta'}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {cita.titulo}
+                        </div>
+                      </div>
+
+                      <div className="tabular text-xs font-medium text-muted-foreground border border-[color:var(--color-border)] rounded-md px-2.5 py-1 bg-surface">
+                        {dateObj.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })} h
+                      </div>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </div>
+
+          {/* Top Deudores */}
+          <div className="rounded-xl border border-[color:var(--color-border)] bg-surface-elevated shadow-sm">
+            <div className="border-b border-[color:var(--color-border)] px-6 py-4">
+              <h2 className="font-display text-2xl text-foreground font-semibold">Saldos pendientes</h2>
+            </div>
+            <ul className="divide-y divide-[color:var(--color-border)]">
+              {deudores.length === 0 ? (
+                <li className="px-6 py-8 text-center text-sm text-muted-foreground">
+                  ¡Genial! No hay saldos impagados.
+                </li>
+              ) : (
+                deudores.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between px-6 py-4">
+                    <div>
+                      <div className="font-medium text-foreground text-sm font-semibold">{c.nombre_apellido}</div>
+                      <div className="text-xs text-muted-foreground">{c.telefono || 'Sin tel.'}</div>
+                    </div>
+                    <div className="tabular font-display text-lg font-bold text-[color:var(--color-primary)]">
+                      {c.pendiente} €
+                    </div>
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        </section>
+
+        {/* Gráfico Trajes Más Solicitados */}
+        <section className="mt-10 rounded-xl border border-[color:var(--color-border)] bg-surface-elevated p-8 shadow-sm">
+          <h2 className="font-display text-2xl text-foreground font-semibold mb-6">
+            Trajes y Corpiños Más Solicitados
+          </h2>
+          <div className="flex flex-col gap-5">
+            {trajesPopulares.map((item) => {
+              const pct = Math.round((item.count / maxCount) * 100);
+              return (
+                <div key={item.nombre} className="flex flex-col gap-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-semibold text-foreground">{item.nombre}</span>
+                    <span className="tabular text-muted-foreground">
+                      {item.count} encargos ({item.precio} €)
+                    </span>
+                  </div>
+                  <div className="h-3.5 w-full overflow-hidden rounded-full bg-surface border border-[color:var(--color-border)]">
+                    <div
+                      className="h-full bg-gradient-to-r from-[color:var(--color-primary)] to-[color:var(--color-gold)] transition-all duration-500 rounded-full"
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
                 </div>
               );
             })}
-            {data.distribucionTrajes.length === 0 && (
-              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '24px' }}>
-                No hay encargos suficientes para mostrar estadísticas.
-              </p>
-            )}
           </div>
-        </div>
-
-        {/* Cuentas Pendientes (Top Deudores) */}
-        <div className="card">
-          <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '20px' }}>⚠️ Pendientes de Pago (Top 5)</h2>
-          <div className="list-container">
-            {data.deudores.map((deudor) => (
-              <div key={deudor.id} className="list-item">
-                <div className="list-item-details">
-                  <span className="list-item-title">{deudor.nombre_apellido}</span>
-                  <span className="list-item-subtitle">📞 {deudor.telefono || 'Sin teléfono'}</span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span className="list-item-value" style={{ color: '#ef4444', display: 'block' }}>
-                    -{parseFloat(deudor.falta_pagar as any).toFixed(2)} €
-                  </span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Pagado: {parseFloat(deudor.pagado as any).toFixed(2)} € de {parseFloat(deudor.precio_total as any).toFixed(2)} €
-                  </span>
-                </div>
-              </div>
-            ))}
-            {data.deudores.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '24px', color: '#10b981', fontWeight: 500 }}>
-                🎉 ¡Todas las cuentas están al día!
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Próximas Citas */}
-        <div className="card" style={{ gridColumn: '1 / -1' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '20px' }}>📅 Próximas Citas de Prueba</h2>
-          <div className="list-container">
-            {data.proximasCitas.map((cita) => (
-              <div key={cita.id} className="list-item">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <span style={{ fontSize: '24px' }}>📅</span>
-                  <div className="list-item-details">
-                    <span className="list-item-title" style={{ fontSize: '15px' }}>
-                      {cita.titulo} con <strong>{cita.cliente_nombre}</strong>
-                    </span>
-                    <span className="list-item-subtitle">
-                      Fecha: {formatDate(cita.fecha_hora)}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span className="list-item-value" style={{ color: '#60a5fa', display: 'block' }}>
-                    {new Date(cita.fecha_hora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} hs
-                  </span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    📞 {cita.cliente_telefono || '-'}
-                  </span>
-                </div>
-              </div>
-            ))}
-            {data.proximasCitas.length === 0 && (
-              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '24px' }}>
-                No hay próximas citas agendadas en los siguientes días.
-              </p>
-            )}
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   );
-};
+}

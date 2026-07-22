@@ -1,20 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { Cita, Cliente } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const MONTHS = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 interface CalendarViewProps {
   refreshTrigger: number;
 }
 
-export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) => {
+export function CalendarView({ refreshTrigger }: CalendarViewProps) {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [currentDate, setCurrentDate] = useState<Date>(new Date(2026, 6, 29)); // Inicializar en Julio de 2026 como la captura
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDayForCita, setSelectedDayForCita] = useState<number | null>(null);
 
   // Formulario de Cita Rápida
-  const [quickCitaTitulo, setQuickCitaTitulo] = useState('Prueba');
+  const [quickCitaTitulo, setQuickCitaTitulo] = useState('1ª prueba');
   const [quickCitaClienteId, setQuickCitaClienteId] = useState<number | ''>('');
   const [quickCitaHora, setQuickCitaHora] = useState('10:00');
 
@@ -26,7 +33,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
         setCitas(data);
       }
     } catch (e) {
-      console.error('Error fetching appointments:', e);
+      console.error('Error cargando citas:', e);
     }
   };
 
@@ -36,12 +43,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
       if (res.ok) {
         const data = await res.json();
         setClientes(data);
-        if (data.length > 0) {
-          setQuickCitaClienteId(data[0].id);
-        }
       }
     } catch (e) {
-      console.error('Error fetching clients:', e);
+      console.error('Error cargando clientes:', e);
     }
   };
 
@@ -53,20 +57,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // Nombre del mes en español
-  const monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
-
-  // Obtener días del mes
-  const firstDayOfMonth = new Date(year, month, 1);
+  const firstOfMonth = new Date(year, month, 1);
+  const startOffset = (firstOfMonth.getDay() + 6) % 7; // Monday = 0
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Día de la semana del primer día (0 = Domingo, 1 = Lunes, etc.)
-  let startDayOfWeek = firstDayOfMonth.getDay();
-  // Ajustar para que la semana empiece el Lunes (0 = Lunes, 1 = Martes, ... 6 = Domingo)
-  startDayOfWeek = (startDayOfWeek === 0) ? 6 : startDayOfWeek - 1;
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
 
   const prevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
@@ -76,221 +74,255 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ refreshTrigger }) =>
     setCurrentDate(new Date(year, month + 1, 1));
   };
 
-  const handleDayClick = (day: number) => {
-    setSelectedDayForCita(day);
+  const goToToday = () => {
+    setCurrentDate(new Date());
   };
 
   const handleCreateQuickCita = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDayForCita || !quickCitaClienteId || !quickCitaHora) return;
+    if (!selectedDayForCita || !quickCitaClienteId) return;
 
-    const fechaCita = new Date(year, month, selectedDayForCita);
-    const [hours, minutes] = quickCitaHora.split(':');
-    fechaCita.setHours(parseInt(hours), parseInt(minutes), 0);
+    const formattedMonth = String(month + 1).padStart(2, '0');
+    const formattedDay = String(selectedDayForCita).padStart(2, '0');
+    const fechaHoraStr = `${year}-${formattedMonth}-${formattedDay}T${quickCitaHora}:00`;
 
     try {
       const res = await fetch(`${API_URL}/api/citas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cliente_id: quickCitaClienteId,
+          cliente_id: Number(quickCitaClienteId),
           titulo: quickCitaTitulo,
-          fecha_hora: fechaCita.toISOString(),
+          fecha_hora: fechaHoraStr,
         }),
       });
 
       if (res.ok) {
         setSelectedDayForCita(null);
-        setQuickCitaTitulo('Prueba');
+        setQuickCitaClienteId('');
         fetchCitas();
       }
-    } catch (e) {
-      console.error('Error creating quick appointment:', e);
+    } catch (error) {
+      console.error('Error creando cita:', error);
     }
   };
 
-  // Renderizar la rejilla del calendario
-  const renderDays = () => {
-    const dayCells = [];
-
-    // Celdas vacías del mes anterior
-    for (let i = 0; i < startDayOfWeek; i++) {
-      dayCells.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
+  const handleDeleteCita = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('¿Eliminar esta cita?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/citas/${id}`, { method: 'DELETE' });
+      if (res.ok) fetchCitas();
+    } catch (error) {
+      console.error('Error eliminando cita:', error);
     }
+  };
 
-    // Celdas de los días del mes
-    for (let day = 1; day <= daysInMonth; day++) {
-      const cellDate = new Date(year, month, day);
-      
-      // Filtrar citas de este día
-      const dayAppointments = citas.filter((cita) => {
-        const citaDate = new Date(cita.fecha_hora);
-        return (
-          citaDate.getDate() === day &&
-          citaDate.getMonth() === month &&
-          citaDate.getFullYear() === year
-        );
-      });
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
 
-      const isToday =
-        day === new Date().getDate() &&
-        month === new Date().getMonth() &&
-        year === new Date().getFullYear();
+  return (
+    <div className="relative w-full">
+      <div className="relative mx-auto max-w-7xl px-8 py-6">
+        <header>
+          <div className="eyebrow">Atelier · Agenda</div>
+          <h1 className="mt-2 font-display text-5xl text-[color:var(--color-primary)]">
+            Calendario de Citas
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Visualiza y organiza las citas de pruebas de trajes de las clientas.
+          </p>
+          <div className="gold-rule mt-6 max-w-md" />
+        </header>
 
-      dayCells.push(
-        <div
-          key={`day-${day}`}
-          className={`calendar-day ${isToday ? 'today' : ''}`}
-          onClick={() => handleDayClick(day)}
-        >
-          <div className="day-number">{day}</div>
-          <div className="calendar-appointments">
-            {dayAppointments.map((cita) => {
-              const dateObj = new Date(cita.fecha_hora);
-              const timeStr = dateObj.toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit',
+        <section className="mt-10 overflow-hidden rounded-xl border border-[color:var(--color-border)] bg-surface-elevated shadow-sm">
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--color-border)] px-8 py-5">
+            <div className="flex items-baseline gap-3">
+              <h2 className="font-display text-3xl text-foreground font-semibold">{MONTHS[month]}</h2>
+              <span className="eyebrow tabular">{year}</span>
+            </div>
+
+            <div className="inline-flex items-center rounded-md border border-[color:var(--color-border)] bg-background p-1">
+              <button
+                onClick={prevMonth}
+                className="inline-flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-[color-mix(in_oklab,var(--color-gold)_15%,transparent)] hover:text-foreground cursor-pointer"
+                aria-label="Mes Anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={goToToday}
+                className="px-3 py-1 text-xs font-semibold tracking-wide uppercase text-foreground hover:text-[color:var(--color-primary)] cursor-pointer"
+              >
+                Hoy
+              </button>
+              <button
+                onClick={nextMonth}
+                className="inline-flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-[color-mix(in_oklab,var(--color-gold)_15%,transparent)] hover:text-foreground cursor-pointer"
+                aria-label="Siguiente Mes"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Weekday Header */}
+          <div className="grid grid-cols-7 border-b border-[color:var(--color-border)] bg-surface">
+            {WEEKDAYS.map((d) => (
+              <div key={d} className="eyebrow px-3 py-3 text-center font-bold">
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Days Grid */}
+          <div className="grid grid-cols-7">
+            {cells.map((day, idx) => {
+              if (day === null) {
+                return (
+                  <div
+                    key={`empty-${idx}`}
+                    className="min-h-[120px] border-b border-r border-[color:var(--color-border)] bg-[color-mix(in_oklab,var(--color-muted)_50%,transparent)]"
+                  />
+                );
+              }
+
+              const isToday = isCurrentMonth && today.getDate() === day;
+              const dayAppointments = citas.filter((cita) => {
+                const citaDate = new Date(cita.fecha_hora);
+                return (
+                  citaDate.getDate() === day &&
+                  citaDate.getMonth() === month &&
+                  citaDate.getFullYear() === year
+                );
               });
-              const isCorpiño = cita.titulo.toLowerCase().includes('corpiño') || 
-                                (cita.cliente_nombre && cita.cliente_nombre.toLowerCase().includes('clara'));
+
               return (
                 <div
-                  key={cita.id}
-                  className={`calendar-appointment-item ${isCorpiño ? 'secondary' : ''}`}
-                  title={`${timeStr} - ${cita.titulo} (${cita.cliente_nombre})`}
+                  key={`day-${day}`}
+                  onClick={() => setSelectedDayForCita(day)}
+                  className={[
+                    "group relative min-h-[120px] border-b border-r border-[color:var(--color-border)] p-2.5 transition-all cursor-pointer hover:bg-[color-mix(in_oklab,var(--color-gold)_8%,transparent)]",
+                    (idx + 1) % 7 === 0 && "border-r-0",
+                  ].join(" ")}
                 >
-                  <span style={{ fontWeight: 600 }}>{timeStr}</span> {cita.titulo}
-                  <div style={{ fontSize: '9px', opacity: 0.8 }}>👤 {cita.cliente_nombre}</div>
+                  <div className="mb-2 flex items-center justify-between">
+                    {isToday ? (
+                      <span className="tabular inline-flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--color-gold)] text-xs font-bold text-[color:var(--color-primary-deep)] shadow-sm">
+                        {day}
+                      </span>
+                    ) : (
+                      <span className="tabular text-sm font-semibold text-muted-foreground group-hover:text-foreground">
+                        {day}
+                      </span>
+                    )}
+                    <span className="opacity-0 group-hover:opacity-100 text-xs text-[color:var(--color-primary)] font-medium">
+                      + Cita
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[85px]">
+                    {dayAppointments.map((cita) => (
+                      <div
+                        key={cita.id}
+                        className="group/item flex items-center justify-between rounded-md border border-[color-mix(in_oklab,var(--color-primary)_20%,transparent)] bg-[color-mix(in_oklab,var(--color-primary)_8%,transparent)] px-2 py-1 text-xs text-[color:var(--color-primary)] font-medium shadow-2xs"
+                      >
+                        <div className="truncate">
+                          <span className="font-semibold">{cita.cliente_nombre || 'Clienta'}: </span>
+                          <span>{cita.titulo}</span>
+                        </div>
+                        <button
+                          onClick={(e) => handleDeleteCita(cita.id, e)}
+                          className="opacity-0 group-hover/item:opacity-100 text-[color:var(--color-primary)] hover:text-red-700 cursor-pointer ml-1"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               );
             })}
           </div>
-        </div>
-      );
-    }
+        </section>
 
-    return dayCells;
-  };
+        {/* Modal Nueva Cita Rápida */}
+        {selectedDayForCita !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <form onSubmit={handleCreateQuickCita} className="w-full max-w-md rounded-xl border border-[color:var(--color-border)] border-t-4 border-t-[color:var(--color-primary)] bg-surface-elevated p-8 shadow-2xl">
+              <h3 className="font-display text-2xl text-foreground font-semibold mb-1">
+                Agendar Cita Rápida
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Fecha: <strong className="text-foreground">{selectedDayForCita} de {MONTHS[month]} {year}</strong>
+              </p>
 
-  return (
-    <div className="calendar-container">
-      <div className="page-header">
-        <h1 className="page-title">Calendario de Citas</h1>
-        <p className="page-subtitle">Visualiza y organiza las citas de pruebas de trajes de las clientas.</p>
-      </div>
-
-      <div className="card" style={{ padding: '16px' }}>
-        <div className="calendar-header">
-          <h2 style={{ fontSize: '20px', fontWeight: 700 }}>
-            {monthNames[month]} {year}
-          </h2>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={prevMonth} className="button button-secondary" style={{ padding: '8px 12px' }}>
-              ◀ Anterior
-            </button>
-            <button
-              onClick={() => setCurrentDate(new Date())}
-              className="button button-secondary"
-              style={{ padding: '8px 12px' }}
-            >
-              Hoy
-            </button>
-            <button onClick={nextMonth} className="button button-secondary" style={{ padding: '8px 12px' }}>
-              Siguiente ▶
-            </button>
-          </div>
-        </div>
-
-        {/* Rejilla de Días de la Semana */}
-        <div className="calendar-grid" style={{ gridTemplateRows: 'auto' }}>
-          <div className="calendar-day-header">Lun</div>
-          <div className="calendar-day-header">Mar</div>
-          <div className="calendar-day-header">Mié</div>
-          <div className="calendar-day-header">Jue</div>
-          <div className="calendar-day-header">Vie</div>
-          <div className="calendar-day-header">Sáb</div>
-          <div className="calendar-day-header">Dom</div>
-        </div>
-
-        {/* Rejilla de Días */}
-        <div className="calendar-grid" style={{ borderTop: 'none' }}>
-          {renderDays()}
-        </div>
-      </div>
-
-      {/* Modal para añadir Cita Rápida */}
-      {selectedDayForCita !== null && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="modal-title">
-              Nueva Cita para el {selectedDayForCita} de {monthNames[month]}
-            </h3>
-            {clientes.length === 0 ? (
-              <div>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                  Primero debes registrar al menos una clienta en la sección de Gestión.
-                </p>
-                <div className="modal-actions">
-                  <button onClick={() => setSelectedDayForCita(null)} className="button button-secondary">
-                    Cerrar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <form onSubmit={handleCreateQuickCita}>
-                <div className="form-group" style={{ marginBottom: '16px' }}>
-                  <label>Clienta</label>
+              <div className="flex flex-col gap-4">
+                <label className="flex flex-col gap-2">
+                  <span className="eyebrow">Seleccionar Clienta</span>
                   <select
                     value={quickCitaClienteId}
-                    onChange={(e) => setQuickCitaClienteId(parseInt(e.target.value) || '')}
+                    onChange={(e) => setQuickCitaClienteId(Number(e.target.value))}
+                    className="rounded-md border border-[color:var(--color-input)] bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--color-gold)]"
                     required
                   >
+                    <option value="">-- Elige una clienta --</option>
                     {clientes.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nombre_apellido}
                       </option>
                     ))}
                   </select>
-                </div>
+                </label>
 
-                <div className="form-group" style={{ marginBottom: '16px' }}>
-                  <label>Detalle de Prueba</label>
-                  <input
-                    type="text"
+                <label className="flex flex-col gap-2">
+                  <span className="eyebrow">Tipo / Título de Cita</span>
+                  <select
                     value={quickCitaTitulo}
                     onChange={(e) => setQuickCitaTitulo(e.target.value)}
-                    placeholder="Ej. 1ª prueba, Cita de ajustes"
-                    required
-                  />
-                </div>
+                    className="rounded-md border border-[color:var(--color-input)] bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--color-gold)]"
+                  >
+                    <option value="1ª prueba">1ª prueba</option>
+                    <option value="2ª prueba">2ª prueba</option>
+                    <option value="Prueba final">Prueba final</option>
+                    <option value="Entrega de traje">Entrega de traje</option>
+                    <option value="Cita general">Cita general</option>
+                  </select>
+                </label>
 
-                <div className="form-group" style={{ marginBottom: '16px' }}>
-                  <label>Hora</label>
+                <label className="flex flex-col gap-2">
+                  <span className="eyebrow">Hora de la Cita</span>
                   <input
                     type="time"
                     value={quickCitaHora}
                     onChange={(e) => setQuickCitaHora(e.target.value)}
+                    className="rounded-md border border-[color:var(--color-input)] bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--color-gold)]"
                     required
                   />
-                </div>
+                </label>
+              </div>
 
-                <div className="modal-actions">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDayForCita(null)}
-                    className="button button-secondary"
-                  >
-                    Cancelar
-                  </button>
-                  <button type="submit" className="button">
-                    Crear Cita
-                  </button>
-                </div>
-              </form>
-            )}
+              <div className="mt-8 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedDayForCita(null)}
+                  className="rounded-md border border-[color:var(--color-border)] px-4 py-2 text-sm text-foreground hover:bg-surface cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-md bg-[color:var(--color-primary)] px-5 py-2 text-sm font-semibold text-[color:var(--color-primary-foreground)] hover:bg-[color:var(--color-primary-deep)] cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" />
+                  Agendar Cita
+                </button>
+              </div>
+            </form>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
-};
+}
