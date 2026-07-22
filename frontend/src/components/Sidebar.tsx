@@ -23,14 +23,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) =
 
       <div className="relative px-6 pt-8 pb-6">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveView('clients')}>
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_oklab,var(--color-gold)_15%,transparent)] border border-[color-mix(in_oklab,var(--color-gold)_40%,transparent)] shadow-sm">
-            <img src="/design/crowns.png" alt="Corona" className="h-8 w-8 object-contain drop-shadow-md" />
+          <div className="relative h-11 w-10 shrink-0 overflow-hidden rounded-xl border border-[color:var(--color-gold)] bg-[color-mix(in_oklab,var(--color-gold)_20%,transparent)] p-0.5 shadow-sm">
+            <img src="/design/jewel-crown-logo.jpg" alt="Corona" className="h-full w-full object-cover rounded-lg" />
           </div>
           <div className="flex flex-col leading-none">
             <span className="font-display text-2xl text-[color:var(--color-primary)] font-bold">
               Fallera Nest
             </span>
-            <span className="eyebrow mt-1">Atelier</span>
+            <span className="eyebrow tracking-widest text-[0.68rem] font-semibold text-[color:var(--color-muted-foreground)] mt-1 uppercase">ATELIER</span>
           </div>
         </div>
         <div className="gold-rule mt-6" />

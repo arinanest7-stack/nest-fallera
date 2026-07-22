@@ -225,7 +225,9 @@ export function ClientManager({ onRefreshCitas }: ClientManagerProps) {
         <header className="inline-flex max-w-2xl flex-col rounded-xl border border-[color:var(--color-border)] border-l-4 border-l-[color:var(--color-primary)] bg-[color:var(--color-surface-elevated)]/95 px-6 py-4 shadow-md backdrop-blur-md">
           <div className="eyebrow font-semibold text-[color:var(--color-primary)] opacity-90">Atelier · Gestión</div>
           <div className="flex items-center gap-3.5 mt-1">
-            <img src="/design/crowns.png" alt="Corona Crest" className="h-10 w-auto object-contain drop-shadow-md" />
+            <div className="relative h-11 w-10 shrink-0 overflow-hidden rounded-xl border border-[color:var(--color-gold)] bg-[color-mix(in_oklab,var(--color-gold)_20%,transparent)] p-0.5 shadow-sm">
+              <img src="/design/jewel-crown-logo.jpg" alt="Corona Crest" className="h-full w-full object-cover rounded-lg" />
+            </div>
             <h1 className="font-display text-4xl text-[color:var(--color-primary)] font-bold tracking-tight">
               Gestión de Clientas
             </h1>
